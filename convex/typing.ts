@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-const TYPING_TIMEOUT_MS = 2000;
+const TYPING_TIMEOUT_MS = 3000;
 
 export const setTyping = mutation({
   args: {

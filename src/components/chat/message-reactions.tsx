@@ -3,22 +3,26 @@
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
-import { REACTION_EMOJIS } from "@/lib/constants";
+
+interface ReactionData {
+  emoji: string;
+  count: number;
+  reacted: boolean;
+}
 
 interface MessageReactionsProps {
   messageId: Id<"messages">;
-  reactions: Record<string, { count: number; reacted: boolean }>;
+  reactions: ReactionData[];
 }
 
 export function MessageReactions({ messageId, reactions }: MessageReactionsProps) {
   const toggleReaction = useMutation(api.reactions.toggleReaction);
 
-  const entries = Object.entries(reactions);
-  if (entries.length === 0) return null;
+  if (reactions.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {entries.map(([emoji, { count, reacted }]) => (
+      {reactions.map(({ emoji, count, reacted }) => (
         <button
           key={emoji}
           onClick={() => toggleReaction({ messageId, emoji })}

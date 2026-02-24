@@ -14,7 +14,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex h-dvh">
       <div
-        className={`w-full md:w-80 md:shrink-0 ${
+        className={`w-full md:w-80 md:shrink-0 flex-col ${
           hasConversation ? "hidden md:flex" : "flex"
         }`}
       >

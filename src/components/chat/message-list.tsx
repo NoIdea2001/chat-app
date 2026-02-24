@@ -67,10 +67,21 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
     () => messages?.map((m) => m._id) ?? [],
     [messages]
   );
-  const reactions = useQuery(
+  const rawReactions = useQuery(
     api.reactions.getReactions,
     messageIds.length > 0 ? { messageIds } : "skip"
   );
+
+  // Convert array to map: messageId -> { emoji, count, reacted }[]
+  const reactions = useMemo(() => {
+    if (!rawReactions) return {};
+    const map: Record<string, Array<{ emoji: string; count: number; reacted: boolean }>> = {};
+    for (const r of rawReactions) {
+      if (!map[r.messageId]) map[r.messageId] = [];
+      map[r.messageId].push({ emoji: r.emoji, count: r.count, reacted: r.reacted });
+    }
+    return map;
+  }, [rawReactions]);
 
   const participantIds = useMemo(
     () => conversation?.participants?.map(String) ?? [],
@@ -143,7 +154,7 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
             const isOwn = message.senderId === me?._id;
             const sender = message.sender;
             const isHovered = hoveredMessage === message._id;
-            const messageReactions = reactions?.[message._id] ?? {};
+            const messageReactions = reactions?.[message._id] ?? [];
 
             return (
               <div
@@ -194,7 +205,7 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                             This message was deleted
                           </p>
                         ) : (
-                          <p className="whitespace-pre-wrap break-words">
+                          <p className="whitespace-pre-wrap break-words break-all">
                             {message.body}
                           </p>
                         )}

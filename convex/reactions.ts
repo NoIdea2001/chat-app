@@ -44,17 +44,19 @@ export const getReactions = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return {};
+    if (!identity) return [];
 
     const currentUser = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .unique();
 
-    const result: Record<
-      string,
-      Record<string, { count: number; reacted: boolean }>
-    > = {};
+    const result: Array<{
+      messageId: string;
+      emoji: string;
+      count: number;
+      reacted: boolean;
+    }> = [];
 
     for (const messageId of args.messageIds) {
       const reactions = await ctx.db
@@ -64,17 +66,25 @@ export const getReactions = query({
 
       if (reactions.length === 0) continue;
 
-      const grouped: Record<string, { count: number; reacted: boolean }> = {};
+      // Group by emoji
+      const grouped = new Map<string, { count: number; reacted: boolean }>();
       for (const r of reactions) {
-        if (!grouped[r.emoji]) {
-          grouped[r.emoji] = { count: 0, reacted: false };
-        }
-        grouped[r.emoji].count++;
+        const existing = grouped.get(r.emoji) ?? { count: 0, reacted: false };
+        existing.count++;
         if (currentUser && r.userId === currentUser._id) {
-          grouped[r.emoji].reacted = true;
+          existing.reacted = true;
         }
+        grouped.set(r.emoji, existing);
       }
-      result[messageId] = grouped;
+
+      for (const [emoji, data] of grouped) {
+        result.push({
+          messageId,
+          emoji,
+          count: data.count,
+          reacted: data.reacted,
+        });
+      }
     }
 
     return result;
