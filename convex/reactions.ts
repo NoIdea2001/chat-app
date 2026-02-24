@@ -16,18 +16,27 @@ export const toggleReaction = mutation({
       .unique();
     if (!currentUser) throw new Error("User not found");
 
-    // Find existing reaction by scanning (more reliable than compound index with emoji)
-    const allUserReactions = await ctx.db
+    // Fetch all user reactions for the given message
+    const userReactions = await ctx.db
       .query("reactions")
       .withIndex("by_message", (q) => q.eq("messageId", args.messageId))
       .collect();
 
-    const existing = allUserReactions.find(
+    // Delete all other reactions by the same user for the message to ensure only one exists
+    const userExistingReactions = userReactions.filter((r) => r.userId === currentUser._id);
+    for (const reaction of userExistingReactions) {
+      if (reaction.emoji !== args.emoji) {
+        await ctx.db.delete(reaction._id);
+      }
+    }
+
+    // Check for the specific emoji reaction by the user
+    const existingReaction = userReactions.find(
       (r) => r.userId === currentUser._id && r.emoji === args.emoji
     );
 
-    if (existing) {
-      await ctx.db.delete(existing._id);
+    if (existingReaction) {
+      await ctx.db.delete(existingReaction._id);
     } else {
       await ctx.db.insert("reactions", {
         messageId: args.messageId,
