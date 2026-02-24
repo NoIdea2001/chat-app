@@ -16,15 +16,15 @@ export const toggleReaction = mutation({
       .unique();
     if (!currentUser) throw new Error("User not found");
 
-    const existing = await ctx.db
+    // Find existing reaction by scanning (more reliable than compound index with emoji)
+    const allUserReactions = await ctx.db
       .query("reactions")
-      .withIndex("by_message_user_emoji", (q) =>
-        q
-          .eq("messageId", args.messageId)
-          .eq("userId", currentUser._id)
-          .eq("emoji", args.emoji)
-      )
-      .unique();
+      .withIndex("by_message", (q) => q.eq("messageId", args.messageId))
+      .collect();
+
+    const existing = allUserReactions.find(
+      (r) => r.userId === currentUser._id && r.emoji === args.emoji
+    );
 
     if (existing) {
       await ctx.db.delete(existing._id);
@@ -44,12 +44,15 @@ export const getReactions = query({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    let currentUserId: string | null = null;
+    if (identity) {
+      const currentUser = await ctx.db
+        .query("users")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+      currentUserId = currentUser?._id ?? null;
+    }
 
     const result: Array<{
       messageId: string;
@@ -66,12 +69,11 @@ export const getReactions = query({
 
       if (reactions.length === 0) continue;
 
-      // Group by emoji
       const grouped = new Map<string, { count: number; reacted: boolean }>();
       for (const r of reactions) {
         const existing = grouped.get(r.emoji) ?? { count: 0, reacted: false };
         existing.count++;
-        if (currentUser && r.userId === currentUser._id) {
+        if (currentUserId && r.userId === currentUserId) {
           existing.reacted = true;
         }
         grouped.set(r.emoji, existing);
