@@ -3,7 +3,7 @@
 import { useState, useRef, KeyboardEvent } from "react";
 import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button";
-import { SendHorizontal } from "lucide-react";
+import { AlertCircle, SendHorizontal } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { useTyping } from "@/hooks/use-typing";
@@ -14,21 +14,45 @@ interface MessageInputProps {
 
 export function MessageInput({ conversationId }: MessageInputProps) {
   const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const sendMessage = useMutation(api.messages.sendMessage);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { startTyping, clearTyping } = useTyping();
+  const lastFailedMessage = useRef<string | null>(null);
 
   const handleSend = async () => {
     const trimmed = body.trim();
-    if (!trimmed) return;
+    if (!trimmed || isSending) return;
 
     setBody("");
+    setError(null);
+    setIsSending(true);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
 
     clearTyping(conversationId);
-    await sendMessage({ conversationId, body: trimmed });
+
+    try {
+      await sendMessage({ conversationId, body: trimmed });
+      lastFailedMessage.current = null;
+    } catch (err) {
+      lastFailedMessage.current = trimmed;
+      setBody(trimmed);
+      setError(
+        err instanceof Error ? err.message : "Failed to send message"
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessage.current) {
+      setBody(lastFailedMessage.current);
+      handleSend();
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -48,12 +72,31 @@ export function MessageInput({ conversationId }: MessageInputProps) {
 
   return (
     <div className="border-t p-4">
+      {error && (
+        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={handleRetry}
+            className="font-medium underline hover:no-underline"
+          >
+            Retry
+          </button>
+          <button
+            onClick={() => setError(null)}
+            className="font-medium hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
           value={body}
           onChange={(e) => {
             setBody(e.target.value);
+            setError(null);
             handleInput();
             if (e.target.value.trim()) {
               startTyping(conversationId);
@@ -67,7 +110,7 @@ export function MessageInput({ conversationId }: MessageInputProps) {
         <Button
           size="icon"
           onClick={handleSend}
-          disabled={!body.trim()}
+          disabled={!body.trim() || isSending}
           className="shrink-0"
         >
           <SendHorizontal className="h-4 w-4" />

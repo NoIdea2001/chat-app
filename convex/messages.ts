@@ -40,6 +40,34 @@ export const sendMessage = mutation({
   },
 });
 
+export const deleteMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!currentUser) throw new Error("User not found");
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+
+    if (message.senderId !== currentUser._id) {
+      throw new Error("Can only delete your own messages");
+    }
+
+    await ctx.db.patch(args.messageId, {
+      isDeleted: true,
+      body: "",
+    });
+  },
+});
+
 export const getMessages = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {

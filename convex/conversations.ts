@@ -83,6 +83,70 @@ export const getMyConversations = query({
   },
 });
 
+export const createGroupConversation = mutation({
+  args: {
+    participantIds: v.array(v.id("users")),
+    groupName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!currentUser) throw new Error("User not found");
+
+    if (args.participantIds.length < 2) {
+      throw new Error("Group must have at least 2 other participants");
+    }
+
+    const allParticipants = [currentUser._id, ...args.participantIds.filter(
+      (id) => id !== currentUser._id
+    )];
+
+    return await ctx.db.insert("conversations", {
+      isGroup: true,
+      groupName: args.groupName,
+      participants: allParticipants,
+      lastMessageTime: Date.now(),
+      createdBy: currentUser._id,
+    });
+  },
+});
+
+export const addGroupMember = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!currentUser) throw new Error("User not found");
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+    if (!conversation.isGroup) throw new Error("Not a group conversation");
+    if (!conversation.participants.includes(currentUser._id)) {
+      throw new Error("Not a participant");
+    }
+    if (conversation.participants.includes(args.userId)) {
+      throw new Error("User already in group");
+    }
+
+    await ctx.db.patch(args.conversationId, {
+      participants: [...conversation.participants, args.userId],
+    });
+  },
+});
+
 export const getConversation = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
