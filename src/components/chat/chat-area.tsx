@@ -4,11 +4,14 @@ import { useQuery } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
+import { TypingIndicator } from "./typing-indicator";
 import { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useUnread } from "@/hooks/use-unread";
+import { useEffect } from "react";
 
 interface ChatAreaProps {
   conversationId: Id<"conversations">;
@@ -18,7 +21,16 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
   const conversation = useQuery(api.conversations.getConversation, {
     conversationId,
   });
+  const messages = useQuery(api.messages.getMessages, { conversationId });
   const router = useRouter();
+  const { markAsRead } = useUnread();
+
+  // Mark as read on open and when new messages arrive
+  useEffect(() => {
+    if (conversation) {
+      markAsRead(conversationId);
+    }
+  }, [conversationId, conversation, messages?.length, markAsRead]);
 
   if (conversation === undefined) {
     return (
@@ -75,6 +87,9 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
 
       {/* Messages */}
       <MessageList conversationId={conversationId} />
+
+      {/* Typing Indicator */}
+      <TypingIndicator conversationId={conversationId} />
 
       {/* Input */}
       <MessageInput conversationId={conversationId} />

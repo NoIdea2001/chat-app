@@ -2,17 +2,19 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConversations } from "@/hooks/use-conversations";
+import { useUnread } from "@/hooks/use-unread";
 import { formatSidebarTime } from "@/lib/format-time";
 import { UserSearch } from "./user-search";
 import { NoConversations } from "./empty-states";
-import { Id } from "../../../convex/_generated/dataModel";
 
 export function Sidebar() {
   const { conversations, isLoading } = useConversations();
+  const { unreadCounts } = useUnread();
   const params = useParams();
   const router = useRouter();
   const activeConversationId = params?.conversationId as string | undefined;
@@ -45,6 +47,7 @@ export function Sidebar() {
               const otherUser = conversation.otherParticipants[0];
               if (!otherUser) return null;
               const isActive = activeConversationId === conversation._id;
+              const unreadCount = unreadCounts[conversation._id] ?? 0;
 
               return (
                 <button
@@ -75,14 +78,21 @@ export function Sidebar() {
                       <p className="text-sm font-medium truncate">
                         {otherUser.name}
                       </p>
-                      {conversation.lastMessageTime && (
-                        <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                          {formatSidebarTime(conversation.lastMessageTime)}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        {conversation.lastMessageTime && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatSidebarTime(conversation.lastMessageTime)}
+                          </span>
+                        )}
+                        {unreadCount > 0 && (
+                          <Badge className="h-5 min-w-5 flex items-center justify-center rounded-full px-1.5 text-[10px] font-bold">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {conversation.lastMessagePreview && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className={`text-xs truncate ${unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                         {conversation.lastMessagePreview}
                       </p>
                     )}
