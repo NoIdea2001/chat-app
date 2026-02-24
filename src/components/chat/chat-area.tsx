@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
+import { GroupSettingsDialog } from "./group-settings-dialog";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatAreaSkeleton } from "./loading-states";
 import { ChatErrorBoundary } from "./error-boundary";
@@ -27,7 +28,7 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
   });
   const router = useRouter();
   const { markAsRead } = useUnread();
-  const { playSound } = useNotificationSound();
+  const { playSound, sendBrowserNotification } = useNotificationSound();
   const { messages } = useMessages(conversationId);
   const prevMessageCount = useRef(0);
 
@@ -38,12 +39,17 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
     if (count > prevMessageCount.current && prevMessageCount.current > 0) {
       const lastMessage = messages[count - 1];
       const me = conversation.currentUserId;
-      if (lastMessage && lastMessage.senderId !== me && document.hidden) {
+      if (lastMessage && lastMessage.senderId !== me) {
         playSound();
+        // Browser notification only when tab is hidden
+        const senderName = conversation.otherParticipants?.find(
+          (p) => p?._id === lastMessage.senderId
+        )?.name ?? "Someone";
+        sendBrowserNotification(senderName, lastMessage.body ?? "New message");
       }
     }
     prevMessageCount.current = count;
-  }, [messages, conversation, playSound]);
+  }, [messages, conversation, playSound, sendBrowserNotification]);
 
   useEffect(() => {
     if (conversation) {
@@ -68,7 +74,7 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
 
   return (
     <ChatErrorBoundary>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full w-full bg-background">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b bg-background">
           <Button
@@ -85,7 +91,7 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
               <div className="flex items-center justify-center h-9 w-9 rounded-full bg-primary/10">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-semibold">
                   {conversation.groupName}
                 </p>
@@ -93,6 +99,12 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
                   {conversation.participants.length} members
                 </p>
               </div>
+              <GroupSettingsDialog
+                conversationId={conversationId}
+                groupName={conversation.groupName}
+                participants={conversation.resolvedParticipants}
+                currentUserId={conversation.currentUserId}
+              />
             </>
           ) : otherUser ? (
             <>

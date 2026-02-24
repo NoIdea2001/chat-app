@@ -61,7 +61,6 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
   const [showNewMessages, setShowNewMessages] = useState(false);
   const prevMessageCount = useRef(0);
   const initialScrollDone = useRef(false);
-  const [hoveredMessage, setHoveredMessage] = useState<string | null>(null);
 
   const messageIds = useMemo(
     () => messages?.map((m) => m._id) ?? [],
@@ -153,15 +152,12 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
           {messages.map((message) => {
             const isOwn = message.senderId === me?._id;
             const sender = message.sender;
-            const isHovered = hoveredMessage === message._id;
             const messageReactions = reactions?.[message._id] ?? [];
 
             return (
               <div
                 key={message._id}
                 className={`flex gap-3 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
-                onMouseEnter={() => setHoveredMessage(message._id)}
-                onMouseLeave={() => setHoveredMessage(null)}
               >
                 {!isOwn && (
                   <Avatar className="h-8 w-8 shrink-0">
@@ -175,9 +171,8 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                   </Avatar>
                 )}
                 <div
-                  className={`flex flex-col max-w-[70%] ${
-                    isOwn ? "items-end" : "items-start"
-                  }`}
+                  className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isOwn ? "items-end" : "items-start"
+                    }`}
                 >
                   {!isOwn && sender && isGroup && (
                     <span
@@ -192,13 +187,12 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                   <div className="relative group">
                     <div className={`flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                       <div
-                        className={`rounded-2xl px-4 py-2 text-sm ${
-                          message.isDeleted
+                        className={`rounded-2xl px-4 py-2 text-sm ${message.isDeleted
                             ? "bg-muted/50 border border-dashed border-border"
                             : isOwn
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
-                        }`}
+                          }`}
                       >
                         {message.isDeleted ? (
                           <p className="italic text-muted-foreground text-xs">
@@ -211,14 +205,16 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                         )}
                       </div>
 
-                      {/* Action buttons on hover */}
-                      {isHovered && !message.isDeleted && (
-                        <div className={`flex items-center gap-0.5 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+                      {/* Action buttons */}
+                      {!message.isDeleted && (
+                        <div
+                          className={`absolute -top-3 ${isOwn ? "right-2" : "left-2"} z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 md:opacity-0 opacity-100 bg-background/95 backdrop-blur-sm border border-border/50 shadow-sm rounded-full px-1 py-0.5`}
+                        >
                           <ReactionPicker messageId={message._id} />
                           {isOwn && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                                <button className="p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                                   <MoreVertical className="h-4 w-4" />
                                 </button>
                               </DropdownMenuTrigger>
@@ -227,7 +223,7 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                                   onClick={() =>
                                     deleteMessage({ messageId: message._id })
                                   }
-                                  className="text-destructive focus:text-destructive"
+                                  className="text-destructive focus:text-destructive cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete

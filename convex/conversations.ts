@@ -147,6 +147,42 @@ export const addGroupMember = mutation({
   },
 });
 
+export const removeGroupMember = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!currentUser) throw new Error("User not found");
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+    if (!conversation.isGroup) throw new Error("Not a group conversation");
+    if (!conversation.participants.includes(currentUser._id)) {
+      throw new Error("Not a participant");
+    }
+    if (!conversation.participants.includes(args.userId)) {
+      throw new Error("User not in group");
+    }
+
+    // Prevent removing the last member or the creator if they are the only one left
+    if (conversation.participants.length <= 1) {
+      throw new Error("Cannot remove the last member of the group");
+    }
+
+    await ctx.db.patch(args.conversationId, {
+      participants: conversation.participants.filter((id) => id !== args.userId),
+    });
+  },
+});
+
 export const getConversation = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
@@ -171,9 +207,15 @@ export const getConversation = query({
       otherParticipantIds.map((id) => ctx.db.get(id))
     );
 
+    // Resolve ALL participants for group settings
+    const allResolvedParticipants = await Promise.all(
+      conversation.participants.map((id) => ctx.db.get(id))
+    );
+
     return {
       ...conversation,
       otherParticipants: otherParticipants.filter(Boolean),
+      resolvedParticipants: allResolvedParticipants.filter(Boolean),
       currentUserId: currentUser._id,
     };
   },

@@ -8,9 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NoUsersFound } from "./empty-states";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id, Doc } from "../../../convex/_generated/dataModel";
 
-export function UserSearch() {
+interface UserSearchProps {
+  onSelect?: (user: Doc<"users">) => void;
+  placeholder?: string;
+}
+
+export function UserSearch({ onSelect, placeholder = "Search users..." }: UserSearchProps = {}) {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
   const me = useQuery(api.users.getMe);
@@ -28,18 +33,22 @@ export function UserSearch() {
     (user) => user._id !== me?._id
   );
 
-  const handleSelectUser = async (userId: Id<"users">) => {
-    const conversationId = await createOrGetConversation({
-      participantUserId: userId,
-    });
-    setSearchTerm("");
-    router.push(`/chat/${conversationId}`);
+  const handleSelectUser = async (user: Doc<"users">) => {
+    if (onSelect) {
+      onSelect(user);
+    } else {
+      const conversationId = await createOrGetConversation({
+        participantUserId: user._id,
+      });
+      setSearchTerm("");
+      router.push(`/chat/${conversationId}`);
+    }
   };
 
   return (
     <div className="space-y-2">
       <Input
-        placeholder="Search users..."
+        placeholder={placeholder}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className="h-9"
@@ -55,7 +64,7 @@ export function UserSearch() {
               {filteredResults?.map((user) => (
                 <button
                   key={user._id}
-                  onClick={() => handleSelectUser(user._id)}
+                  onClick={() => handleSelectUser(user)}
                   className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-accent transition-colors text-left"
                 >
                   <Avatar className="h-8 w-8">
