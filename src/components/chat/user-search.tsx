@@ -14,6 +14,7 @@ export function UserSearch() {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
   const me = useQuery(api.users.getMe);
+  const allUsers = useQuery(api.users.getAllUsers);
   const searchResults = useQuery(
     api.users.searchUsers,
     searchTerm.length > 0 ? { name: searchTerm } : "skip"
@@ -22,7 +23,8 @@ export function UserSearch() {
     api.conversations.createOrGetConversation
   );
 
-  const filteredResults = searchResults?.filter(
+  const displayUsers = searchTerm.length > 0 ? searchResults : allUsers;
+  const filteredResults = displayUsers?.filter(
     (user) => user._id !== me?._id
   );
 
@@ -42,7 +44,7 @@ export function UserSearch() {
         onChange={(e) => setSearchTerm(e.target.value)}
         className="h-9"
       />
-      {searchTerm.length > 0 && (
+      {(
         <ScrollArea className="max-h-60">
           {filteredResults && filteredResults.length === 0 ? (
             <div className="py-4">

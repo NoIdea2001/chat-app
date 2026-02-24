@@ -98,8 +98,8 @@ export const createGroupConversation = mutation({
       .unique();
     if (!currentUser) throw new Error("User not found");
 
-    if (args.participantIds.length < 2) {
-      throw new Error("Group must have at least 2 other participants");
+    if (args.participantIds.length < 1) {
+      throw new Error("Group must have at least 1 other participant");
     }
 
     const allParticipants = [currentUser._id, ...args.participantIds.filter(

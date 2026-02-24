@@ -117,7 +117,7 @@ export function CreateGroupDialog() {
         <DialogFooter>
           <Button
             onClick={handleCreate}
-            disabled={!groupName.trim() || selectedUsers.length < 2 || isCreating}
+            disabled={!groupName.trim() || selectedUsers.length < 1 || isCreating}
           >
             {isCreating ? "Creating..." : "Create Group"}
           </Button>
