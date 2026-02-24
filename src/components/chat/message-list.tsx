@@ -20,6 +20,14 @@ import { ReactionPicker } from "./reaction-picker";
 import { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { ArrowDown, MoreVertical, Trash2 } from "lucide-react";
+import { ReadReceipt } from "./read-receipt";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { format } from "date-fns";
 
 interface MessageListProps {
   conversationId: Id<"conversations">;
@@ -226,9 +234,26 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                       reactions={messageReactions}
                     />
                   </div>
-                  <span className="text-[10px] text-muted-foreground mt-1">
-                    {formatMessageTime(message.createdAt)}
-                  </span>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-[10px] text-muted-foreground cursor-default">
+                            {formatMessageTime(message.createdAt)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side={isOwn ? "left" : "right"}>
+                          <p className="text-xs">{format(new Date(message.createdAt), "EEEE, MMMM d, yyyy 'at' h:mm:ss a")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {isOwn && !isGroup && !message.isDeleted && (
+                      <ReadReceipt
+                        conversationId={conversationId}
+                        messageTimestamp={message.createdAt}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             );

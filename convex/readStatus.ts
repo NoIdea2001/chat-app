@@ -34,6 +34,40 @@ export const markAsRead = mutation({
   },
 });
 
+export const getReadStatusForMessages = query({
+  args: {
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    if (!user) return null;
+
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) return null;
+
+    // Only for 1:1 conversations
+    if (conversation.isGroup || conversation.participants.length !== 2) return null;
+
+    const otherUserId = conversation.participants.find((id) => id !== user._id);
+    if (!otherUserId) return null;
+
+    const otherReadStatus = await ctx.db
+      .query("readStatus")
+      .withIndex("by_user_conversation", (q) =>
+        q.eq("userId", otherUserId).eq("conversationId", args.conversationId)
+      )
+      .unique();
+
+    return otherReadStatus?.lastReadTime ?? null;
+  },
+});
+
 export const getUnreadCounts = query({
   args: {},
   handler: async (ctx) => {

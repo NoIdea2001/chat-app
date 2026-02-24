@@ -9,11 +9,13 @@ import { ChatAreaSkeleton } from "./loading-states";
 import { ChatErrorBoundary } from "./error-boundary";
 import { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { useMessages } from "@/hooks/use-messages";
 import { ArrowLeft, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useUnread } from "@/hooks/use-unread";
-import { useEffect } from "react";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { useEffect, useRef } from "react";
 
 interface ChatAreaProps {
   conversationId: Id<"conversations">;
@@ -25,6 +27,23 @@ export function ChatArea({ conversationId }: ChatAreaProps) {
   });
   const router = useRouter();
   const { markAsRead } = useUnread();
+  const { playSound } = useNotificationSound();
+  const { messages } = useMessages(conversationId);
+  const prevMessageCount = useRef(0);
+
+  // Play notification sound for new messages from others
+  useEffect(() => {
+    if (!messages || !conversation) return;
+    const count = messages.length;
+    if (count > prevMessageCount.current && prevMessageCount.current > 0) {
+      const lastMessage = messages[count - 1];
+      const me = conversation.currentUserId;
+      if (lastMessage && lastMessage.senderId !== me && document.hidden) {
+        playSound();
+      }
+    }
+    prevMessageCount.current = count;
+  }, [messages, conversation, playSound]);
 
   useEffect(() => {
     if (conversation) {

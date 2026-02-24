@@ -13,6 +13,7 @@ import { CreateGroupDialog } from "./create-group-dialog";
 import { SidebarSkeleton } from "./loading-states";
 import { NoConversations } from "./empty-states";
 import { Users } from "lucide-react";
+import { UserMenu } from "./user-menu";
 
 export function Sidebar() {
   const { conversations, isLoading } = useConversations();
@@ -118,6 +119,8 @@ export function Sidebar() {
           </div>
         )}
       </ScrollArea>
+      <Separator />
+      <UserMenu />
     </div>
   );
 }
