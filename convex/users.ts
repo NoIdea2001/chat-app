@@ -1,9 +1,19 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
+import { getCurrentUserOrNull } from "./helpers";
+
+// If a user hasn't sent a heartbeat in this window, treat them as offline
+const ONLINE_TIMEOUT_MS = 60_000; // 60 seconds (2x the 30s heartbeat)
+
+function isUserOnline(user: Doc<"users">): boolean {
+  if (!user.isOnline) return false;
+  return Date.now() - user.lastSeen < ONLINE_TIMEOUT_MS;
+}
 
 export const upsertUser = mutation({
   args: {
-    clerkId: v.string(),
+    externalAuthId: v.string(),
     name: v.string(),
     email: v.string(),
     imageUrl: v.optional(v.string()),
@@ -11,7 +21,9 @@ export const upsertUser = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_externalAuthId", (q) =>
+        q.eq("externalAuthId", args.externalAuthId),
+      )
       .unique();
 
     if (existing) {
@@ -26,7 +38,7 @@ export const upsertUser = mutation({
     }
 
     return await ctx.db.insert("users", {
-      clerkId: args.clerkId,
+      externalAuthId: args.externalAuthId,
       name: args.name,
       email: args.email,
       imageUrl: args.imageUrl,
@@ -37,11 +49,13 @@ export const upsertUser = mutation({
 });
 
 export const getUser = query({
-  args: { clerkId: v.string() },
+  args: { externalAuthId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_externalAuthId", (q) =>
+        q.eq("externalAuthId", args.externalAuthId),
+      )
       .unique();
   },
 });
@@ -49,29 +63,39 @@ export const getUser = query({
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("users").collect();
+    const users = await ctx.db.query("users").collect();
+    return users.map((user) => ({
+      ...user,
+      isOnline: isUserOnline(user),
+    }));
   },
 });
 
 export const searchUsers = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const users = await ctx.db
       .query("users")
       .withSearchIndex("search_name", (q) => q.search("name", args.name))
       .collect();
+    return users.map((user) => ({
+      ...user,
+      isOnline: isUserOnline(user),
+    }));
   },
 });
 
 export const updateOnlineStatus = mutation({
   args: {
-    clerkId: v.string(),
+    externalAuthId: v.string(),
     isOnline: v.boolean(),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_externalAuthId", (q) =>
+        q.eq("externalAuthId", args.externalAuthId),
+      )
       .unique();
 
     if (!user) return;
@@ -86,14 +110,20 @@ export const updateOnlineStatus = mutation({
 export const getMe = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    return await getCurrentUserOrNull(ctx);
+  },
+});
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
-    return user;
+// Internal mutation used by the cron job to clean stale online statuses
+export const cleanStaleOnlineStatuses = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const now = Date.now();
+    for (const user of users) {
+      if (user.isOnline && now - user.lastSeen >= ONLINE_TIMEOUT_MS) {
+        await ctx.db.patch(user._id, { isOnline: false });
+      }
+    }
   },
 });

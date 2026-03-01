@@ -3,14 +3,14 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    clerkId: v.string(),
+    externalAuthId: v.string(),
     name: v.string(),
     email: v.string(),
     imageUrl: v.optional(v.string()),
     isOnline: v.boolean(),
     lastSeen: v.number(),
   })
-    .index("by_clerkId", ["clerkId"])
+    .index("by_externalAuthId", ["externalAuthId"])
     .searchIndex("search_name", { searchField: "name" }),
 
   conversations: defineTable({
