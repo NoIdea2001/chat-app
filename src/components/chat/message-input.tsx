@@ -1,22 +1,20 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent } from "react";
-import { useMutation } from "convex/react";
+import { useSendMessage } from "@/lib/adapters/backend";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, SendHorizontal } from "lucide-react";
-import { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
 import { useTyping } from "@/hooks/use-typing";
 
 interface MessageInputProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
 }
 
 export function MessageInput({ conversationId }: MessageInputProps) {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const sendMessage = useMutation(api.messages.sendMessage);
+  const sendMessage = useSendMessage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { startTyping, clearTyping } = useTyping();
   const lastFailedMessage = useRef<string | null>(null);

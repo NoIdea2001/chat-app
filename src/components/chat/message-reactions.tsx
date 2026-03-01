@@ -1,8 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { useToggleReaction } from "@/lib/adapters/backend";
 
 interface ReactionData {
   emoji: string;
@@ -11,12 +9,12 @@ interface ReactionData {
 }
 
 interface MessageReactionsProps {
-  messageId: Id<"messages">;
+  messageId: string;
   reactions: ReactionData[];
 }
 
 export function MessageReactions({ messageId, reactions }: MessageReactionsProps) {
-  const toggleReaction = useMutation(api.reactions.toggleReaction);
+  const toggleReaction = useToggleReaction();
 
   if (reactions.length === 0) return null;
 

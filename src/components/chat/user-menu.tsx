@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { useClerk } from "@clerk/nextjs";
+import { useCurrentUser } from "@/lib/adapters/backend";
+import { useAuth } from "@/lib/adapters/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -13,11 +13,10 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "./sound-toggle";
 import { LogOut } from "lucide-react";
-import { api } from "../../../convex/_generated/api";
 
 export function UserMenu() {
-  const me = useQuery(api.users.getMe);
-  const { signOut } = useClerk();
+  const me = useCurrentUser();
+  const { signOut } = useAuth();
 
   if (!me) return null;
 

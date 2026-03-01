@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvexAuth } from "convex/react";
+import { useAuth } from "@/lib/adapters/auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 
 export default function LandingPage() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { isAuthenticated, isLoaded } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function LandingPage() {
     }
   }, [isAuthenticated, router]);
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

@@ -1,39 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
-import { api } from "../../../convex/_generated/api";
+import {
+  useCurrentUser,
+  useAllUsers,
+  useSearchUsers,
+  useCreateOrGetConversation,
+} from "@/lib/adapters/backend";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NoUsersFound } from "./empty-states";
-import { Id, Doc } from "../../../convex/_generated/dataModel";
+import type { User } from "@/types";
 
 interface UserSearchProps {
-  onSelect?: (user: Doc<"users">) => void;
+  onSelect?: (user: User) => void;
   placeholder?: string;
 }
 
-export function UserSearch({ onSelect, placeholder = "Search users..." }: UserSearchProps = {}) {
+export function UserSearch({ onSelect, placeholder = "Search users..." }: UserSearchProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
-  const me = useQuery(api.users.getMe);
-  const allUsers = useQuery(api.users.getAllUsers);
-  const searchResults = useQuery(
-    api.users.searchUsers,
-    searchTerm.length > 0 ? { name: searchTerm } : "skip"
+  const me = useCurrentUser();
+  const allUsers = useAllUsers();
+  const searchResults = useSearchUsers(
+    searchTerm.length > 0 ? searchTerm : undefined,
   );
-  const createOrGetConversation = useMutation(
-    api.conversations.createOrGetConversation
-  );
+  const createOrGetConversation = useCreateOrGetConversation();
 
   const displayUsers = searchTerm.length > 0 ? searchResults : allUsers;
   const filteredResults = displayUsers?.filter(
     (user) => user._id !== me?._id
   );
 
-  const handleSelectUser = async (user: Doc<"users">) => {
+  const handleSelectUser = async (user: User) => {
     if (onSelect) {
       onSelect(user);
     } else {
@@ -53,7 +54,7 @@ export function UserSearch({ onSelect, placeholder = "Search users..." }: UserSe
         onChange={(e) => setSearchTerm(e.target.value)}
         className="h-9"
       />
-      {(
+      {searchTerm.length > 0 && (
         <ScrollArea className="max-h-60">
           {filteredResults && filteredResults.length === 0 ? (
             <div className="py-4">

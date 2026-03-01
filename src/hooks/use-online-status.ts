@@ -1,23 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useAuth } from "@/lib/adapters/auth";
+import { useUpdateOnlineStatus } from "@/lib/adapters/backend";
 import { ONLINE_CHECK_INTERVAL_MS } from "@/lib/constants";
 
 export function useOnlineStatus() {
-  const { user } = useUser();
-  const updateStatus = useMutation(api.users.updateOnlineStatus);
+  const { user } = useAuth();
+  const updateStatus = useUpdateOnlineStatus();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
-    const clerkId = user.id;
+    const externalAuthId = user.id;
 
-    const setOnline = () => updateStatus({ clerkId, isOnline: true });
-    const setOffline = () => updateStatus({ clerkId, isOnline: false });
+    const setOnline = () => updateStatus({ externalAuthId, isOnline: true });
+    const setOffline = () => updateStatus({ externalAuthId, isOnline: false });
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {

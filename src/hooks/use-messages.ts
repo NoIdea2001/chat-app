@@ -1,10 +1,8 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { useMessages as useMessagesBackend } from "@/lib/adapters/backend";
 
-export function useMessages(conversationId: Id<"conversations">) {
-  const messages = useQuery(api.messages.getMessages, { conversationId });
+export function useMessages(conversationId: string) {
+  const messages = useMessagesBackend(conversationId);
   return { messages, isLoading: messages === undefined };
 }

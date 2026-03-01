@@ -1,9 +1,8 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useMyConversations as useMyConversationsBackend } from "@/lib/adapters/backend";
 
 export function useConversations() {
-  const conversations = useQuery(api.conversations.getMyConversations);
+  const conversations = useMyConversationsBackend();
   return { conversations, isLoading: conversations === undefined };
 }

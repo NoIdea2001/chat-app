@@ -1,8 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { useToggleReaction } from "@/lib/adapters/backend";
 import { REACTION_EMOJIS } from "@/lib/constants";
 import {
   Popover,
@@ -13,11 +11,11 @@ import { SmilePlus } from "lucide-react";
 import { useState } from "react";
 
 interface ReactionPickerProps {
-  messageId: Id<"messages">;
+  messageId: string;
 }
 
 export function ReactionPicker({ messageId }: ReactionPickerProps) {
-  const toggleReaction = useMutation(api.reactions.toggleReaction);
+  const toggleReaction = useToggleReaction();
   const [open, setOpen] = useState(false);
 
   const handleReact = async (emoji: string) => {

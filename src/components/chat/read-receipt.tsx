@@ -1,19 +1,15 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { useReadStatus } from "@/lib/adapters/backend";
 import { Check, CheckCheck } from "lucide-react";
 
 interface ReadReceiptProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
   messageTimestamp: number;
 }
 
 export function ReadReceipt({ conversationId, messageTimestamp }: ReadReceiptProps) {
-  const readStatus = useQuery(api.readStatus.getReadStatusForMessages, {
-    conversationId,
-  });
+  const readStatus = useReadStatus(conversationId);
 
   if (readStatus === undefined) return null;
 

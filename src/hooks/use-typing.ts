@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import {
+  useSetTyping as useSetTypingBackend,
+  useClearTyping as useClearTypingBackend,
+} from "@/lib/adapters/backend";
 import { TYPING_TIMEOUT_MS } from "@/lib/constants";
 
 export function useTyping() {
-  const setTypingMutation = useMutation(api.typing.setTyping);
-  const clearTypingMutation = useMutation(api.typing.clearTyping);
+  const setTypingMutation = useSetTypingBackend();
+  const clearTypingMutation = useClearTypingBackend();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeConversationRef = useRef<Id<"conversations"> | null>(null);
+  const activeConversationRef = useRef<string | null>(null);
 
   const clearTyping = useCallback(
-    (conversationId: Id<"conversations">) => {
+    (conversationId: string) => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -21,11 +22,11 @@ export function useTyping() {
       activeConversationRef.current = null;
       clearTypingMutation({ conversationId });
     },
-    [clearTypingMutation]
+    [clearTypingMutation],
   );
 
   const startTyping = useCallback(
-    (conversationId: Id<"conversations">) => {
+    (conversationId: string) => {
       activeConversationRef.current = conversationId;
       setTypingMutation({ conversationId });
 
@@ -35,7 +36,7 @@ export function useTyping() {
         activeConversationRef.current = null;
       }, TYPING_TIMEOUT_MS);
     },
-    [setTypingMutation, clearTypingMutation]
+    [setTypingMutation, clearTypingMutation],
   );
 
   useEffect(() => {

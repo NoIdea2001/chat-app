@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useQuery, useMutation } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,14 +10,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMessages } from "@/hooks/use-messages";
+import {
+  useCurrentUser,
+  useConversation,
+  useDeleteMessage,
+  useReactions,
+} from "@/lib/adapters/backend";
 import { formatMessageTime } from "@/lib/format-time";
 import { MESSAGE_SCROLL_THRESHOLD } from "@/lib/constants";
 import { NoMessages } from "./empty-states";
 import { MessageListSkeleton } from "./loading-states";
 import { MessageReactions } from "./message-reactions";
 import { ReactionPicker } from "./reaction-picker";
-import { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
 import { ArrowDown, MoreVertical, Trash2 } from "lucide-react";
 import { ReadReceipt } from "./read-receipt";
 import {
@@ -30,7 +33,7 @@ import {
 import { format } from "date-fns";
 
 interface MessageListProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
   isGroup?: boolean;
 }
 
@@ -52,9 +55,9 @@ function getSenderColor(senderId: string, participantIds: string[]): string {
 
 export function MessageList({ conversationId, isGroup = false }: MessageListProps) {
   const { messages, isLoading } = useMessages(conversationId);
-  const me = useQuery(api.users.getMe);
-  const conversation = useQuery(api.conversations.getConversation, { conversationId });
-  const deleteMessage = useMutation(api.messages.deleteMessage);
+  const me = useCurrentUser();
+  const conversation = useConversation(conversationId);
+  const deleteMessage = useDeleteMessage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
@@ -66,10 +69,7 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
     () => messages?.map((m) => m._id) ?? [],
     [messages]
   );
-  const rawReactions = useQuery(
-    api.reactions.getReactions,
-    messageIds.length > 0 ? { messageIds } : "skip"
-  );
+  const rawReactions = useReactions(messageIds);
 
   // Convert array to map: messageId -> { emoji, count, reacted }[]
   const reactions = useMemo(() => {
@@ -171,8 +171,9 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                   </Avatar>
                 )}
                 <div
-                  className={`flex flex-col max-w-[85%] md:max-w-[75%] ${isOwn ? "items-end" : "items-start"
-                    }`}
+                  className={`flex flex-col max-w-[70%] ${
+                    isOwn ? "items-end" : "items-start"
+                  }`}
                 >
                   {!isOwn && sender && isGroup && (
                     <span
@@ -187,12 +188,13 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
                   <div className="relative group">
                     <div className={`flex items-center gap-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                       <div
-                        className={`rounded-2xl px-4 py-2 text-sm ${message.isDeleted
+                        className={`rounded-2xl px-4 py-2 text-sm ${
+                          message.isDeleted
                             ? "bg-muted/50 border border-dashed border-border"
                             : isOwn
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
-                          }`}
+                        }`}
                       >
                         {message.isDeleted ? (
                           <p className="italic text-muted-foreground text-xs">
@@ -207,14 +209,12 @@ export function MessageList({ conversationId, isGroup = false }: MessageListProp
 
                       {/* Action buttons */}
                       {!message.isDeleted && (
-                        <div
-                          className={`absolute -top-3 ${isOwn ? "right-2" : "left-2"} z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200 md:opacity-0 opacity-100 bg-background/95 backdrop-blur-sm border border-border/50 shadow-sm rounded-full px-1 py-0.5`}
-                        >
+                        <div className={`flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity md:opacity-0 opacity-100 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
                           <ReactionPicker messageId={message._id} />
                           {isOwn && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button className="p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                                <button className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
                                   <MoreVertical className="h-4 w-4" />
                                 </button>
                               </DropdownMenuTrigger>

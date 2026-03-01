@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
@@ -8,8 +7,7 @@ import { GroupSettingsDialog } from "./group-settings-dialog";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatAreaSkeleton } from "./loading-states";
 import { ChatErrorBoundary } from "./error-boundary";
-import { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
+import { useConversation } from "@/lib/adapters/backend";
 import { useMessages } from "@/hooks/use-messages";
 import { ArrowLeft, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,13 +17,11 @@ import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { useEffect, useRef } from "react";
 
 interface ChatAreaProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
 }
 
 export function ChatArea({ conversationId }: ChatAreaProps) {
-  const conversation = useQuery(api.conversations.getConversation, {
-    conversationId,
-  });
+  const conversation = useConversation(conversationId);
   const router = useRouter();
   const { markAsRead } = useUnread();
   const { playSound, sendBrowserNotification } = useNotificationSound();

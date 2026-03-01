@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import {
+  useAddGroupMember,
+  useRemoveGroupMember,
+} from "@/lib/adapters/backend";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +18,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserSearch } from "./user-search";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import type { User } from "@/types";
 
 interface GroupSettingsDialogProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
   groupName?: string;
-  participants: Array<any>;
-  currentUserId: Id<"users">;
+  participants: User[];
+  currentUserId: string;
 }
 
 export function GroupSettingsDialog({
@@ -33,26 +35,30 @@ export function GroupSettingsDialog({
 }: GroupSettingsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  
-  const addMember = useMutation(api.conversations.addGroupMember);
-  const removeMember = useMutation(api.conversations.removeGroupMember);
 
-  const handleAddMember = async (userId: Id<"users">) => {
+  const addMember = useAddGroupMember();
+  const removeMember = useRemoveGroupMember();
+
+  const handleAddMember = async (userId: string) => {
     try {
       await addMember({ conversationId, userId });
       toast.success("Member added to group");
       setIsAdding(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add member");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add member",
+      );
     }
   };
 
-  const handleRemoveMember = async (userId: Id<"users">) => {
+  const handleRemoveMember = async (userId: string) => {
     try {
       await removeMember({ conversationId, userId });
       toast.success("Member removed from group");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to remove member");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove member",
+      );
     }
   };
 
@@ -61,15 +67,21 @@ export function GroupSettingsDialog({
       await removeMember({ conversationId, userId: currentUserId });
       toast.success("You left the group");
       setIsOpen(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to leave group");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to leave group",
+      );
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
           <Settings className="h-5 w-5" />
         </Button>
       </DialogTrigger>
@@ -100,8 +112,8 @@ export function GroupSettingsDialog({
 
             {isAdding && (
               <div className="p-3 bg-muted/30 rounded-xl border border-border/50 shadow-inner">
-                <UserSearch 
-                  onSelect={(user) => handleAddMember(user._id)} 
+                <UserSearch
+                  onSelect={(user) => handleAddMember(user._id)}
                   placeholder="Search users to add..."
                 />
               </div>

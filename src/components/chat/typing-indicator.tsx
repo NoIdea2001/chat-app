@@ -1,15 +1,13 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { useTypingUsers } from "@/lib/adapters/backend";
 
 interface TypingIndicatorProps {
-  conversationId: Id<"conversations">;
+  conversationId: string;
 }
 
 export function TypingIndicator({ conversationId }: TypingIndicatorProps) {
-  const typingUsers = useQuery(api.typing.getTypingUsers, { conversationId });
+  const typingUsers = useTypingUsers(conversationId);
 
   if (!typingUsers || typingUsers.length === 0) return null;
 

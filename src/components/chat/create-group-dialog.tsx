@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import {
+  useAllUsers,
+  useCurrentUser,
+  useCreateGroupConversation,
+} from "@/lib/adapters/backend";
 import {
   Dialog,
   DialogContent,
@@ -21,23 +23,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users } from "lucide-react";
 
 export function CreateGroupDialog() {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState<Id<"users">[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
-  const allUsers = useQuery(api.users.getAllUsers);
-  const me = useQuery(api.users.getMe);
-  const createGroup = useMutation(api.conversations.createGroupConversation);
+  const allUsers = useAllUsers();
+  const me = useCurrentUser();
+  const createGroup = useCreateGroupConversation();
   const router = useRouter();
+
+  useEffect(() => setMounted(true), []);
 
   const otherUsers = allUsers?.filter((u) => u._id !== me?._id) ?? [];
 
-  const toggleUser = (userId: Id<"users">) => {
+  const toggleUser = (userId: string) => {
     setSelectedUsers((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   };
 
@@ -57,6 +62,15 @@ export function CreateGroupDialog() {
       setIsCreating(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <Button variant="outline" size="sm" className="w-full gap-2" disabled>
+        <Users className="h-4 w-4" />
+        New Group
+      </Button>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -117,7 +131,9 @@ export function CreateGroupDialog() {
         <DialogFooter>
           <Button
             onClick={handleCreate}
-            disabled={!groupName.trim() || selectedUsers.length < 1 || isCreating}
+            disabled={
+              !groupName.trim() || selectedUsers.length < 1 || isCreating
+            }
           >
             {isCreating ? "Creating..." : "Create Group"}
           </Button>
