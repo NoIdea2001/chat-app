@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getCurrentUser } from "./helpers";
 
 export const sendMessage = mutation({
   args: {
@@ -7,14 +8,7 @@ export const sendMessage = mutation({
     body: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) throw new Error("Conversation not found");
@@ -45,14 +39,7 @@ export const deleteMessage = mutation({
     messageId: v.id("messages"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
@@ -77,7 +64,7 @@ export const getMessages = query({
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
-        q.eq("conversationId", args.conversationId)
+        q.eq("conversationId", args.conversationId),
       )
       .order("asc")
       .collect();
@@ -86,7 +73,7 @@ export const getMessages = query({
       messages.map(async (message) => {
         const sender = await ctx.db.get(message.senderId);
         return { ...message, sender };
-      })
+      }),
     );
   },
 });

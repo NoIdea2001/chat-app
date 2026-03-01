@@ -1,19 +1,13 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrNull } from "./helpers";
 
 export const createOrGetConversation = mutation({
   args: {
     participantUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     if (currentUser._id === args.participantUserId) {
       throw new Error("Cannot create conversation with yourself");
@@ -43,13 +37,7 @@ export const createOrGetConversation = mutation({
 export const getMyConversations = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const currentUser = await getCurrentUserOrNull(ctx);
     if (!currentUser) return [];
 
     const allConversations = await ctx.db
@@ -89,14 +77,7 @@ export const createGroupConversation = mutation({
     groupName: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     if (args.participantIds.length < 1) {
       throw new Error("Group must have at least 1 other participant");
@@ -122,14 +103,7 @@ export const addGroupMember = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) throw new Error("Conversation not found");
@@ -153,14 +127,7 @@ export const removeGroupMember = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     const conversation = await ctx.db.get(args.conversationId);
     if (!conversation) throw new Error("Conversation not found");
@@ -186,13 +153,7 @@ export const removeGroupMember = mutation({
 export const getConversation = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const currentUser = await getCurrentUserOrNull(ctx);
     if (!currentUser) return null;
 
     const conversation = await ctx.db.get(args.conversationId);
@@ -207,15 +168,9 @@ export const getConversation = query({
       otherParticipantIds.map((id) => ctx.db.get(id))
     );
 
-    // Resolve ALL participants for group settings
-    const allResolvedParticipants = await Promise.all(
-      conversation.participants.map((id) => ctx.db.get(id))
-    );
-
     return {
       ...conversation,
       otherParticipants: otherParticipants.filter(Boolean),
-      resolvedParticipants: allResolvedParticipants.filter(Boolean),
       currentUserId: currentUser._id,
     };
   },

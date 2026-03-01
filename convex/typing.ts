@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrNull } from "./helpers";
 
 const TYPING_TIMEOUT_MS = 3000;
 
@@ -8,14 +9,7 @@ export const setTyping = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await getCurrentUser(ctx);
 
     const existing = await ctx.db
       .query("typingIndicators")
@@ -41,13 +35,7 @@ export const clearTyping = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const user = await getCurrentUserOrNull(ctx);
     if (!user) return;
 
     const existing = await ctx.db
@@ -68,13 +56,8 @@ export const getTypingUsers = query({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
+    const currentUser = await getCurrentUserOrNull(ctx);
+    if (!currentUser) return [];
 
     const now = Date.now();
     const indicators = await ctx.db
@@ -87,7 +70,7 @@ export const getTypingUsers = query({
     const activeTypers = indicators.filter(
       (ind) =>
         ind.lastTyped > now - TYPING_TIMEOUT_MS &&
-        ind.userId !== currentUser?._id
+        ind.userId !== currentUser._id
     );
 
     const users = await Promise.all(

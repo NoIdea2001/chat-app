@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getCurrentUser, getCurrentUserOrNull } from "./helpers";
 
 export const toggleReaction = mutation({
   args: {
@@ -7,14 +8,7 @@ export const toggleReaction = mutation({
     emoji: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-    if (!currentUser) throw new Error("User not found");
+    const currentUser = await getCurrentUser(ctx);
 
     // Fetch all user reactions for the given message
     const userReactions = await ctx.db
@@ -52,16 +46,8 @@ export const getReactions = query({
     messageIds: v.array(v.id("messages")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    let currentUserId: string | null = null;
-    if (identity) {
-      const currentUser = await ctx.db
-        .query("users")
-        .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-        .unique();
-      currentUserId = currentUser?._id ?? null;
-    }
+    const currentUser = await getCurrentUserOrNull(ctx);
+    const currentUserId = currentUser?._id ?? null;
 
     const result: Array<{
       messageId: string;
