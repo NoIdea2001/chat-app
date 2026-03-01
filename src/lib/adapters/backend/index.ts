@@ -1,0 +1,35 @@
+export type {
+  IUserRepository,
+  IConversationRepository,
+  IMessageRepository,
+  IReactionRepository,
+  ITypingRepository,
+  IReadStatusRepository,
+  IBackend,
+} from "./types";
+
+// Re-export the Convex implementation as the default backend
+export {
+  useCurrentUser,
+  useAllUsers,
+  useSearchUsers,
+  useUpsertUser,
+  useUpdateOnlineStatus,
+  useMyConversations,
+  useConversation,
+  useCreateOrGetConversation,
+  useCreateGroupConversation,
+  useAddGroupMember,
+  useRemoveGroupMember,
+  useMessages,
+  useSendMessage,
+  useDeleteMessage,
+  useReactions,
+  useToggleReaction,
+  useTypingUsers,
+  useSetTyping,
+  useClearTyping,
+  useUnreadCounts,
+  useReadStatus,
+  useMarkAsRead,
+} from "./convex";
